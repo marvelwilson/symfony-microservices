@@ -1,0 +1,87 @@
+version: "3.8"
+
+networks:
+  symfony:
+volumes:
+  persistent:
+
+services:
+  
+  notification:
+    build:
+      context: ./notification-services
+      dockerfile: Dockerfile
+    command: composer install
+    environment:
+      - DATABASE_URL=mysql://root:test@db:3306/symfony_db
+    volumes:
+      - ./notification-services:/var/www/project/:cached
+    networks:
+      - symfony
+
+  fpm:
+    build:
+      context: ./user-services/docker
+      dockerfile: Dockerfile-php
+    # command: composer install
+    environment:
+      - DATABASE_URL=mysql://root:test@db:3306/symfony_db
+    volumes:
+      - ./user-services:/var/www/project/:cached
+    networks:
+      - symfony
+    
+  nginx:
+    build:
+      context: ./user-services/docker
+      dockerfile: Dockerfile-nginx
+    volumes:
+      - ./user-services:/var/www/project/:cached
+      - ./user-services/docker/build/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - 1032:80
+    depends_on:
+      - db
+      - fpm
+    networks:
+      - symfony
+
+  db:
+    image: mysql:8
+    ports: 
+      - "3327:3306"
+    environment:
+      MYSQL_DATABASE: symfony_db
+      MYSQL_ROOT_PASSWORD: test
+    # command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci # corrected typo
+    volumes:
+      - persistent:/var/lib/mysql
+      - ./user-services/docker/build/db/:/docker-entrypoint-initdb.d/
+      # - ./user-services/mysql:/var/lib/mysql
+    networks:
+      - symfony
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    links: 
+      - db:db
+    ports:
+      - 8000:80
+    environment:
+      PMA_HOST: db # Use the service name
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test
+    networks:
+      - symfony
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    ports:
+      - 15672:15672
+      - 5672:5672
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    networks:
+      - symfony

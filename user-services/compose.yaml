@@ -1,0 +1,19 @@
+version: '3'
+services:
+  database:
+    image: mysql:${MYSQL_VERSION:-8}-alpine
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-!ChangeMe!}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u ${MYSQL_USER:-app} --password=${MYSQL_PASSWORD:-!ChangeMe!}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/mysql/mysql.sock
+
+volumes:
+  database_data:

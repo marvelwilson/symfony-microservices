@@ -1,0 +1,4 @@
+Create_user:
+  path: /api/user
+  controller: App\Controller\UsersController::createUser
+  methods: POST
